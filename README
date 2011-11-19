@@ -1,4 +1,6 @@
-article_saver.crx : Packed Google Chrome Extension that takes a snippet and other info from the current page and submits it to the article repo
-article_saver : Directory of source code for the chrome extension
-article_repo_add.php : handler for the chrome that actually inserts the article into the repo
-article_repo.sql : DB Schema for Article Repo
+f article_saver.crx : Packed Google Chrome Extension that takes a snippet and other info from the current page and submits it to the article repo
+f article_repo_add.php : handler for the chrome that actually inserts the article into the repo
+f article_repo.sql : DB Schema for Article Repo
+
+d article_saver : Directory of source code for the chrome extension
+d models : model class definitions
