@@ -35,3 +35,15 @@ CREATE TABLE IF NOT EXISTS `article_tags` (
   UNIQUE KEY `uniques` (`article_id`,`tag`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `domain_articles`
+--
+
+CREATE TABLE IF NOT EXISTS `domain_articles` (
+  `aritcle_id` int(11) NOT NULL,
+  `domain_hash` varchar(100) NOT NULL,
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`aritcle_id`,`domain_hash`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
