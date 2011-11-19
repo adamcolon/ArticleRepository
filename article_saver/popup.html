@@ -1,0 +1,171 @@
+<html>
+<head>
+<style>
+body {
+	min-width: 420px;
+	overflow-x: hidden;
+	font-family: Arial, sans-serif;
+	font-size: 12px;
+}
+
+input,textarea {
+	width: 420px;
+}
+
+input#save {
+	font-weight: bold;
+	width: auto;
+}
+
+#image_view {
+	width: 100px;
+}
+
+.arrow-select {
+	cursor: hand;
+}
+</style>
+<script>
+	var Images = [];
+	var objImages = {}
+	var ImageURLs = [];
+
+	var ImageIndex = 0;
+	var ImageCount = 0;
+
+	// This callback function is called when the content script has been injected and returned its results
+	function onPageInfo(o) {
+		document.getElementById("title").value = o.title;
+		document.getElementById("url").value = o.url;
+		document.getElementById("summary").innerText = o.summary;
+
+		ImageIndex = 0;
+		ImageURLs = o.images;
+
+		loadImages();
+	}
+
+	// Preload all images so we can see their attributes and weed out images of low value
+	function loadImages() {
+		var l = ImageURLs.length;
+		document.getElementById("image_info").innerHTML = 'Loading Images [' + l + ']';
+
+		for ( var i = 0; i < l; i++) {
+			if (!objImages[ImageURLs[i]]) {
+				objImages[ImageURLs[i]] = new Image;
+				objImages[ImageURLs[i]].src = ImageURLs[i];
+				objImages[ImageURLs[i]].onload = imageLoaded(objImages[ImageURLs[i]]);
+			}
+		}
+	}
+
+	// Callback function when image is finished loading
+	function imageLoaded(image) {
+		if (imageValidated(image)) {
+			Images.push(image.src);
+			changeImage(0);
+		}
+	}
+
+	// Weed out images of low value
+	function imageValidated(image) {
+		var valid = false;
+		var minWidth = 50;
+		var minHeight = 50;
+
+		if (image && image.width > minWidth && image.height > minHeight) {
+			valid = true
+		}
+
+		return valid;
+	}
+
+	// Updates UI with Image count and current image when changed
+	function changeImage(direction) {
+		ImageCount = Images.length;
+
+		if (ImageCount > 0) {
+			// Update and Validate new ImageIndex
+			ImageIndex += direction;
+			if (ImageIndex >= ImageCount)
+				ImageIndex = 0;
+			if (ImageIndex < 0)
+				ImageIndex = ImageCount - 1;
+
+			document.getElementById("image_view").style.display = 'block';
+			document.getElementById("image_view").src = Images[ImageIndex];
+			document.getElementById("image_url").value = Images[ImageIndex];
+			document.getElementById("image_info").innerHTML = '['
+					+ (ImageIndex + 1) + ' of ' + ImageCount + ' images]';
+		} else {
+			document.getElementById("image_view").style.display = 'none';
+			document.getElementById("image_url").value = '';
+			document.getElementById("image_info").innerHTML = 'No Images';
+		}
+	}
+
+	// Onclick function to unselect an Image
+	function toggleImage(checkbox) {
+		console.log(checkbox);
+		console.log(checkbox.checked);
+
+		if (checkbox.checked || Images.length == 0) {
+			document.getElementById("image_selection").style.display = 'none';
+			document.getElementById("image_view").style.display = 'none';
+			document.getElementById("image_url").value = '';
+			document.getElementById("image_info").innerHTML = 'No Image Selected';
+		} else {
+			document.getElementById("image_selection").style.display = 'block';
+			changeImage(0);
+		}
+	}
+
+	// Call the getPageInfo function in the background page, passing in our onPageInfo function as the callback
+	window.onload = function() {
+		var bg = chrome.extension.getBackgroundPage();
+		bg.getPageInfo(onPageInfo);
+	}
+</script>
+</head>
+<body>
+	<form method="POST"
+		action="http://www.devwarrior.com/scripts/article_repo_add.php">
+		<p>
+			<label for="title">Title</label><br /> <input type="text" id="title"
+				name="title" size="50" value="" />
+		</p>
+		<p>
+			<label for="url">Url</label><br /> <input type="text" id="url"
+				name="url" size="50" value="" />
+		</p>
+		<p>
+			<label for="summary">Summary</label><br />
+			<textarea id="summary" name="summary" rows="6" cols="35"></textarea>
+		</p>
+		<p>
+			<label for="tags">Tags</label><br /> <input type="text" id="tags"
+				name="tags" size="50" value="" />
+		</p>
+		<div>
+			Image:<br />
+			<input style="width: auto;" type="checkbox" id="no_image" name="no_image" value="" onclick="toggleImage(this);" /><label for="no_image">No Image</label>
+		</div>		
+		<div id="image_selection">
+			<div id="image_info"></div>
+			<div>
+				<img onclick="changeImage(-1);" class="arrow-select"
+					src="arrow-left.jpg" /> <img onclick="changeImage(1);"
+					class="arrow-select" src="arrow-right.jpg" />
+			</div>
+			<div>
+				<img id="image_view" src="" />
+			</div>
+			<div>
+				<input READONLY type="text" id="image_url" name="image_url" size="50"
+					value="" />
+			</div>
+		</div>
+		<div></div><input id="save" type="submit" value="Save Article" /></div>
+	</form>
+</body>
+</html>

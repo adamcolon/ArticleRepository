@@ -1,0 +1,16 @@
+{
+    "name": "Article Saver",
+    "description": "Adds the current page to the Article Repository.",
+    "version": "0.1",
+    "background_page": "background.html",
+    "permissions": [
+        "tabs", 
+        "http://*/*", 
+        "https://*/*"
+    ],
+    "browser_action": {
+        "default_title": "Add To Article Repo",
+        "default_icon": "icon.png",
+        "popup": "popup.html"
+    }
+}
