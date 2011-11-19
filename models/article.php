@@ -32,10 +32,14 @@ class Article {
 					
 				$tags = str_replace(array('#', ' ', ', '), array('', ',', ','), $data['tags']);
 				$tags = str_replace(',,', ',', $tags);
-				$this->tags = explode(',', $this->db->escape_string($data));
+				$this->tags = explode(',', $this->db->escape_string($tags));
 					
 				$this->dataloaded = true;
+			}else{
+				echo "Failed Validation<br>";
 			}
+		}else{
+			echo "Data Not Found<br>";
 		}
 	}
 
@@ -45,7 +49,7 @@ class Article {
 	 */
 	function validatePost($data){
 		$valid = false;
-		if(!empty($data['title']) &&  !empty($data['url'])){
+		if(!empty($data['title']) &&  !empty($data['url']) &&  !empty($data['tags'])){
 			$valid = true;
 			if(DEBUG) echo __METHOD__." Post Validated.<br/>";
 		}
@@ -136,7 +140,7 @@ class Article {
 	 */
 	function markPosted($domain, $article_id){
 		$domain_hash = md5($domain);
-		$sql = "INSERT INTO domain_articles (domain_hash, article_id) VALUES('{$domain_hash}',{$article_id});"
+		$sql = "INSERT INTO domain_articles (domain_hash, article_id) VALUES('{$domain_hash}',{$article_id});";
 		
 		list($id, $rows_affected) = $this->db->Execute($sql);
 		return $rows_affected;

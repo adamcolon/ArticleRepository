@@ -48,7 +48,11 @@ class DataSource{
 	}
 
 	function escape_string($string){
-		return mysql_real_escape_string($string, $this->connection);
+		$result = $string;
+		if($string){
+			$result = mysql_real_escape_string($string, $this->connection);
+		}
+		return $result;
 	}
 }
 ?>

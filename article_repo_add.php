@@ -1,7 +1,6 @@
 <?php
 	require('models/article.php');
 	
-	print_r($_POST));
 	echo '<html style="height:25px;"><body>';
 
 	$article = new Article($_POST);
