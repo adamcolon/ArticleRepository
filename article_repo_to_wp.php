@@ -6,6 +6,7 @@
 * If a post title is too long or missing, it will insert the post with a status of 'pending'.
 */
 require('config/wp_config.php');
+require('config/settings.php');
 require('models/article.php');
 require('models/wordpress.php');
 main($wordpress_settings);
@@ -14,8 +15,8 @@ function main($wordpress_settings){
 	echo "<h1>Article Repository Wordpress Publish</h1><div>".date('Y-m-d H:i:s')."</div>";
 
 	// Instantiate main objects
-	$wordpress = new Wordpress($wordpress_settings['db_host'], $wordpress_settings['db_username'], $wordpress_settings['db_password'], $wordpress_settings['db_name'], $wordpress_settings['db_table_prefix']);
-
+	$Wordpress = new Wordpress($wordpress_settings['db_host'], $wordpress_settings['db_username'], $wordpress_settings['db_password'], $wordpress_settings['db_name'], $wordpress_settings['db_table_prefix']);
+	
 	echo "<style>th {text-align:right;background-color:#ddd;}</style><table>";
 	echo "	<tr><th>Wordpress Host:</th><td>{$wordpress_settings['db_host']}</td></tr>";
 	echo "	<tr><th>Wordpress Default Status:</th><td>{$wordpress_settings['default_status']}</td></tr>";
@@ -23,64 +24,38 @@ function main($wordpress_settings){
 	echo "	<tr><th>Wordpress Category Id:</th><td>{$wordpress_settings['category_id']}</td></tr>";
 	echo "	<tr><th>Wordpress Live Publish:</th><td>{$wordpress_settings['live']}</td></tr>";
 
-	// Grab list of Wordpress tags to filter the G+ stream against
-	$wp_tags = $wordpress->getPostTags();
-	echo "	<tr><th>Wordpress Filter Tags:</th><td>".implode(',', $wp_tags)."</td></tr>";
+	// Grab list of Wordpress categories and tags to filter the G+ stream against
+	$wp_tags = $Wordpress->getPostTags();
+	$wp_categories = $Wordpress->getCategories();
+	
+	echo "	<tr><th>Wordpress Category:</th><td>".implode(',', $wp_categories)."</td></tr>";
+	echo "	<tr><th>Wordpress Tags:</th><td>".implode(',', $wp_tags)."</td></tr>";
 	echo "</table><hr>";
 
-	// Loop Over Stream Pages
-	$stream_next = null;
-	for ($i=1; $i <= $google_settings['stream_pages']; $i++){
-		// Grab page of stream
-		if($stream = $google->getStream($google_settings['results_per_page'], $stream_next)){
-			// Loop over all stream items
-			foreach ($stream['items'] as $item){
-				$post = $google->getPostData($item);
-				$stream_next = $stream['nextPageToken'];
-					
-				echo '<pre>';
-				echo "Date: {$post['date_posted']}\n";
-				echo "G+_id: {$post['gp_id']}\n";
-				echo "Title: {$post['title']}\n";
-					
-				// Filter Stream by WP tags
-				if($post_tags = array_intersect($wp_tags, $post['tags'])){
-					echo "Found Tags: [".implode(',', $post_tags)."]\n";
+	if($wp_domain = $Wordpress->getOptions('siteurl')){
+		$Article = new Article();
+		if($articles = $Article->getPostData($wp_domain, $wp_categories)){
+			foreach($articles as $article){
+				$tag_lists = $wp_categories + $wp_tags;
+				$article_tags = $Article->getTags($article['id'], $tag_lists);
 
-					if (empty($post['title'])){
-						echo "<pre>Item: ";print_r($item);echo "</pre>";
-						echo "<pre>Post: ";print_r($post);echo "</pre>";
+				foreach($tag_lists as $tag_id=>$tag_name){
+					if(in_array($tag_name, $article_tags)){
+						$tags["{$tag_id}"] = $tag_name;
 					}
-
-					// Insert Post into Wordpress
-					$post_status = (empty($post['status']))?$wordpress_settings['default_status']:$post['status'];
-					echo "Status: {$post_status}\n";
-
-					if(!$wordpress->postExists($post['gp_id'], $post['url'])){
-						if($wordpress_settings['live']){
-							$wordpress->insertPost($wordpress_settings['category_id'], $wordpress_settings['author_id'], $post['gp_id'], $post['url'], $post['date_posted'], $post['title'], $post['content'], $post_tags, $post_status);
-
-							$blogname = $wordpress->getOptions('blogname');
-							$siteurl = $wordpress->getOptions('siteurl');
-							$subject = "[{$blogname}::G+ToWp::{$post_status}] Blog Entry Added";
-							$message = "{$subject}\n{$siteurl}\n\n----------\n".print_r($post, true);
-							$wordpress->mailAuthor($wordpress_settings['author_id'], $subject, $message);
-						}else{
-							echo "* Wordpress Live is FALSE\n";
-						}
-					}else{
-						echo "* Google+ Post Already Found, Skipping\n";
-					}
-				}else{
-					echo "* No Tags Intersect\n";
 				}
-				echo '</pre><hr>';
+
+				echo "<pre>".print_r($article, true)."</pre>";
+				$Wordpress->insertPost($wordpress_settings['author_id'], array('url_hash'=>$article['hash']), $article['created'], $article['title'], $article['summary'], $tags, 'publish');
+				$Article->markPosted($wp_domain, $article['id']);
 			}
 		}else{
-			break;
+			echo "No Articles Found<br>";
 		}
-		echo "<h2>Next Page</h2>";
+	}else{
+		echo "Site URL Not Found<br>";
 	}
+
 }
 
 ?>

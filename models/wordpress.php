@@ -10,8 +10,8 @@ class Wordpress{
 		$db_settings = array(
 			'host' => $db_host
 			,'db_name' => $db_name
-			,'user' => $b_username
-			,'password' => $db_name
+			,'user' => $db_username
+			,'password' => $db_password
 		);
 		$this->db = new DataSource($db_settings);
 
@@ -54,13 +54,29 @@ class Wordpress{
 	}
 
 	/**
+	* get an array of all Categories
+	* @return array
+	*/
+	function getCategories(){
+		$categories = array();
+	
+		$sql = "SELECT term.term_id as id, term.slug as name FROM {$this->db_table_prefix}terms AS term INNER JOIN {$this->db_table_prefix}term_taxonomy AS tax ON term.term_id=tax.term_id WHERE tax.taxonomy='category';";
+		if($result = $this->db->Query($sql)){
+			foreach($result as $rs){
+				$categories[$rs['id']] = $rs['name'];
+			}
+		}
+		return $categories;
+	}
+	
+	/**
 	 * get an array of all post tags
 	 * @return array
 	 */
 	function getPostTags(){
 		$tags = array();
 			
-		$sql = "SELECT term.term_id as id, term.slug as name FROM {$this->db_table_prefix}terms AS term INNER JOIN wp_term_taxonomy AS tax ON term.term_id=tax.term_id WHERE tax.taxonomy='post_tag';";
+		$sql = "SELECT term.term_id as id, term.slug as name FROM {$this->db_table_prefix}terms AS term INNER JOIN {$this->db_table_prefix}term_taxonomy AS tax ON term.term_id=tax.term_id WHERE tax.taxonomy='post_tag';";
 		if($result = $this->db->Query($sql)){
 			foreach($result as $rs){
 				$tags[$rs['id']] = $rs['name'];
@@ -76,16 +92,18 @@ class Wordpress{
 	 * @param string $url
 	 * @return boolean
 	 */
-	function postExists($gp_id, $url=null){
+	function postExists($existence_criteria){
 		$exists = false;
-			
-		echo "* Checking Existence [gp_id:{$gp_id}, url:{$url}]\n";
-		$where = "(meta_key='gp_id' && meta_value='{$gp_id}')";
-		if($url) $where .= " OR (meta_key='gp_url' && meta_value='{$url}')";
-			
-		$sql = "SELECT * FROM {$this->db_table_prefix}postmeta WHERE {$where} LIMIT 1;";
-		if($this->db->Query($sql)){
-			$exists = true;
+		
+		foreach($existence_criteria as $key=>$value){
+			echo "* Checking Existence [key:{$key}, value:{$value}]<br>";
+			$where = "(meta_key='{$key}' && meta_value='{$value}')";
+				
+			$sql = "SELECT * FROM {$this->db_table_prefix}postmeta WHERE {$where} LIMIT 1;";
+			if($this->db->Query($sql)){
+				$exists = true;
+				break;
+			}
 		}
 			
 		return $exists;
@@ -104,51 +122,54 @@ class Wordpress{
 	 * @param array $tags
 	 * @param string $status
 	 */
-	function insertPost($category_id, $author_id, $gp_id, $url, $date, $title, $content, $tags, $status){
-		if($gp_id){
+	function insertPost($author_id, $existence_criteria, $date, $title, $content, $tags, $status){
+		if($existence_criteria){
 			$title = $this->db->escape_string($title);
 			$slug = str_replace(' ', '-', strtolower($title));
 			$content = $this->db->escape_string($content);
 
-			if(!$this->postExists($gp_id, $url)){
+			if(!$this->postExists($existence_criteria)){
 				$date = date('Y-m-d H:i:s', strtotime($date));
 				// Insert Post
-				echo "* Inserting Post\n";
+				echo "* Inserting Post<br>";
 				$sql = "INSERT INTO {$this->db_table_prefix}posts (`post_author`, `post_date`, `post_title`, `post_name`, `post_content`, `post_status`, `comment_status`, `ping_status`, `post_type`) VALUES({$author_id}, '{$date}', '{$title}', '{$slug}', '{$content}', '{$status}', 'open', 'open', 'post');";
-				list($post_id, $rows_affected) = $this->db->Execute($sql);
-					
+				$results = $this->db->Execute($sql);
+				
+				$post_id = $results['id'];
 				if(!empty($post_id)){
-					// Add to Uncategorized
-					echo "* Inserting Category\n";
-					$sql = "INSERT INTO {$this->db_table_prefix}term_relationships (`object_id`, `term_taxonomy_id`, `term_order`) VALUES({$post_id},{$category_id},0);";
-					list($id, $rows_affected) = $this->db->Execute($sql);
-
 					// Add Tags
-					echo "* Inserting Tags\n";
+					echo "* Inserting Tags<br>";
 					foreach($tags as $tag_id=>$tag_slug){
+						echo "* - Inserting [{$tag_slug}]<br>";
 						$sql = "INSERT INTO {$this->db_table_prefix}term_relationships (`object_id`, `term_taxonomy_id`, `term_order`) VALUES({$post_id},{$tag_id},0);";
-						list($id, $rows_affected) = $this->db->Execute($sql);
+						$results = $this->db->Execute($sql);
 					}
 
-					// Add gp_id to Meta Data
-					echo "* Inserting Meta gp_id\n";
-					$sql = "INSERT INTO {$this->db_table_prefix}postmeta (`post_id`, `meta_key`, `meta_value`) VALUES({$post_id},'gp_id','{$gp_id}');";
-					list($id, $rows_affected) = $this->db->Execute($sql);
-
-					// Add gp_url to Meta Data
-					if($url){
-						echo "* Inserting Meta url\n";
-						$sql = "INSERT INTO {$this->db_table_prefix}postmeta (`post_id`, `meta_key`, `meta_value`) VALUES({$post_id},'gp_url','{$url}');";
-						list($id, $rows_affected) = $this->db->Execute($sql);
-					}
+					// Add Meta Data
+					echo "* Inserting Meta Existence Criteria<br>";
+					$this->insertExists($existence_criteria, $post_id);
 				}else{
-					echo "* Failed To Insert Post\n";
+					echo "* Failed To Insert Post<br>";
 				}
 			}else{
-				echo "* Google+ Post Already Found, Skipping\n";
+				echo "* Existence Criteria Found, Skipping<br>";
 			}
 		}else{
-			echo "* Google+ ID Not Found\n";
+			echo "* Existence Criteria Not Included<br>";
+		}
+	}
+
+	/**
+	*
+	* insert meta data for existence criteria
+	* @param array $existence_criteria
+	* @param int $post_id
+	*/
+	function insertExists($existence_criteria, $post_id){
+		foreach($existence_criteria as $key=>$value){
+			echo "* Inserting Existence Criteria [key:{$key}, value:{$value}]<br>";
+			$sql = "INSERT INTO {$this->db_table_prefix}postmeta (`post_id`, `meta_key`, `meta_value`) VALUES({$post_id},'{$key}','{$value}');";
+			$results = $this->db->Execute($sql);
 		}
 	}
 }

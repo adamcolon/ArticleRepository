@@ -38,8 +38,6 @@ class Article {
 			}else{
 				echo "Failed Validation<br>";
 			}
-		}else{
-			echo "Data Not Found<br>";
 		}
 	}
 
@@ -123,14 +121,46 @@ class Article {
 	 * @param array $tags
 	 */
 	function getPostData($domain, $tags){
-		$domain_hash = md5($domain);
+		echo __METHOD__." domain:{$domain}, tags:".implode("','", $tags)."<br>";
+		if($domain && $tags){
+			$domain_hash = md5($domain);
+	
+			if($tag_list = implode("','", $tags)){
+				$tag_list = "'{$tag_list}'";
+			}
+			
+			$sql = "SELECT * FROM articles WHERE id IN (SELECT article_id FROM article_tags WHERE article_id=articles.id AND tag in ({$tag_list})) AND id NOT IN (SELECT article_id FROM domain_articles WHERE article_id=articles.id AND domain_hash='{$domain_hash}');";
+			echo $sql;
+			return $this->db->Query($sql);
+		}else{
+			return false;
+		}
+	}
+	
+	/**
+	* returns an array intersection of tags
+	* @param string $article_id
+	* @param array $tags
+	*/
+	
+	function getTags($article_id, $tags){
+		$tag_results = array();
+
 		if($tag_list = implode("','", $tags)){
 			$tag_list = "'{$tag_list}'";
 		}
+				
+		$sql = "SELECT tag FROM article_tags WHERE article_id={$article_id} AND tag in ({$tag_list});";
+
+		if($results = $this->db->Query($sql)){
+			foreach($results as $rs){
+				$tag_results[] = $rs['tag'];
+			}
+		}
 		
-		$sql = "SELECT * FROM articles a, article_tags at WHERE a.id=at.article_id AND at.tag IN ({$tag_list}) AND a.id NOT IN (SELECT article_id FROM domain_articles WHERE domain_hash='{$domain_hash}');";
-		return $this->db->Query($sql);
+		return $tag_results;
 	}
+	
 	
 	/**
 	 * Marks an article posted by domain
@@ -139,6 +169,8 @@ class Article {
 	 * @return int
 	 */
 	function markPosted($domain, $article_id){
+		echo "* Mark as Posted [{$domain}, {$article_id}]<br>";
+		
 		$domain_hash = md5($domain);
 		$sql = "INSERT INTO domain_articles (domain_hash, article_id) VALUES('{$domain_hash}',{$article_id});";
 		

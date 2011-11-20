@@ -10,4 +10,4 @@
 	$wordpress_settings['default_status'] = 'publish'; // ['publish','pending', 'draft']; Default 'publish'
 	$wordpress_settings['author_id'] = 1;	// Default 1
 	$wordpress_settings['category_id'] = 1;	// Default 1
-	$wordpress_settings['live'] = true;	// [true,false]; Will only insert if this equals true
+	$wordpress_settings['live'] = false;	// [true,false]; Will only insert if this equals true
