@@ -124,14 +124,16 @@ class Wordpress{
 	 */
 	function insertPost($author_id, $existence_criteria, $date, $title, $content, $tags, $status){
 		if($existence_criteria){
+echo "<br>title:[{$title}]<br>";
 			$title = $this->db->escape_string($title);
-			$slug = str_replace(' ', '-', strtolower($title));
 			$content = $this->db->escape_string($content);
 
 			if(!$this->postExists($existence_criteria)){
 				$date = date('Y-m-d H:i:s', strtotime($date));
 				// Insert Post
 				echo "* Inserting Post<br>";
+				
+				$slug = $this->getPostName($title);
 				$sql = "INSERT INTO {$this->db_table_prefix}posts (`post_author`, `post_date`, `post_title`, `post_name`, `post_content`, `post_status`, `comment_status`, `ping_status`, `post_type`) VALUES({$author_id}, '{$date}', '{$title}', '{$slug}', '{$content}', '{$status}', 'open', 'open', 'post');";
 				$results = $this->db->Execute($sql);
 				
@@ -171,6 +173,16 @@ class Wordpress{
 			$sql = "INSERT INTO {$this->db_table_prefix}postmeta (`post_id`, `meta_key`, `meta_value`) VALUES({$post_id},'{$key}','{$value}');";
 			$results = $this->db->Execute($sql);
 		}
+	}
+	
+	function getPostName($title){
+		$search = array(' ', ',', '|', '.', '!', '?', "'", '(', ')', '\\', '/', '&');
+		$replace = array('-', '', '', '', '', '', '', '', '', '', '');
+		
+		$post_name = str_replace($search, $replace, strtolower($title));
+		$post_name = preg_replace('/\-+/', '-', $post_name);
+		
+		return $post_name;
 	}
 }
 

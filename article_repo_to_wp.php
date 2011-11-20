@@ -46,7 +46,12 @@ function main($wordpress_settings){
 				}
 
 				echo "<pre>".print_r($article, true)."</pre>";
-				$Wordpress->insertPost($wordpress_settings['author_id'], array('url_hash'=>$article['hash']), $article['created'], $article['title'], $article['summary'], $tags, 'publish');
+				
+				$content = "<blockquote>{$article['summary']}</blockquote>";
+				$content .= "<br/>Source: <a href=\"{$article['url']}\">{$article['url']}</a>";
+				if($article['image_url']) $content .= "<br/><img style=\"max-width:400px;\" src=\"{$article['image_url']}\" />";
+
+				$Wordpress->insertPost($wordpress_settings['author_id'], array('url_hash'=>$article['hash']), $article['created'], $article['title'], $content, $tags, 'publish');
 				$Article->markPosted($wp_domain, $article['id']);
 			}
 		}else{
