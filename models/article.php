@@ -181,7 +181,7 @@ class Article {
 		echo "* Mark as Posted [{$domain}, {$article_id}]<br>";
 		
 		$domain_hash = md5($domain);
-		$sql = "INSERT INTO domain_articles (domain_hash, article_id) VALUES('{$domain_hash}',{$article_id});";
+		$sql = "INSERT INTO domain_articles (domain_hash, domain_name, article_id) VALUES('{$domain_hash}','{$domain}', {$article_id});";
 		
 		list($id, $rows_affected) = $this->db->Execute($sql);
 		return $rows_affected;
