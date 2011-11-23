@@ -176,11 +176,8 @@ echo "<br>title:[{$title}]<br>";
 	}
 	
 	function getPostName($title){
-		$search = array(' ', ',', '|', '.', '!', '?', "'", '(', ')', '\\', '/', '&');
-		$replace = array('-', '', '', '', '', '', '', '', '', '', '');
-		
-		$post_name = str_replace($search, $replace, strtolower($title));
-		$post_name = preg_replace('/\-+/', '-', $post_name);
+		$post_name = preg_replace("/[^a-zA-Z0-9\s]/", "", $title);
+		$post_name = preg_replace("/[\s\:]/", "-", $post_name);
 		
 		return $post_name;
 	}

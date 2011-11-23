@@ -23,11 +23,12 @@ class Article {
 		$this->db = new DataSource($db_settings);
 
 		if($data){
-			if($this->validatePost($data)){
+			$result = $this->validatePost($data);
+			if($result['valid']){
 				$this->hash = md5($data['url']);
 				$this->title = $this->db->escape_string($data['title']);
 				$this->url = $data['url'];
-				$this->summary = $this->db->escape_string($data['summary']);
+				$this->summary = $this->processSummary($data['summary']);
 				$this->image_url = $data['image_url'];
 					
 				$tags = str_replace(array('#', ' ', ', '), array('', ',', ','), $data['tags']);
@@ -36,7 +37,7 @@ class Article {
 					
 				$this->dataloaded = true;
 			}else{
-				echo "Failed Validation<br>";
+				echo "Failed Validation<br>".implode("\n", $result['messages']);
 			}
 		}
 	}
@@ -47,11 +48,18 @@ class Article {
 	 */
 	function validatePost($data){
 		$valid = false;
+		$messages = array();
+		
 		if(!empty($data['title']) &&  !empty($data['url']) &&  !empty($data['tags'])){
 			$valid = true;
 			if(DEBUG) echo __METHOD__." Post Validated.<br/>";
+		}else{
+			if(empty($data['title'])) $messages[] = "<div>Missing Title.</div>";
+			if(empty($data['url'])) $messages[] = "<div>Missing URL.</div>";
+			if(empty($data['tags'])) $messages[] = "<div>Missing Tags.</div>";
 		}
-		return $valid;
+		
+		return array('valid'=>$valid, 'message'=>$messages);
 	}
 
 	/**
@@ -74,7 +82,8 @@ class Article {
 	 */
 	function add(){
 		$success = false;
-			
+		$messages = array();
+					
 		if($this->dataloaded){
 			if(!$this->exists()){
 				$sql = "INSERT INTO articles (title, hash, url, image_url, summary) VALUES('{$this->title}', '{$this->hash}', '{$this->url}', '{$this->image_url}', '{$this->summary}');";
@@ -83,11 +92,11 @@ class Article {
 					
 				$this->addTags($result['id'], $this->tags);
 			}else{
-				if(DEBUG) echo __METHOD__." Hash Exists<br/>";
+				$messages[] = "<div>Article Already Exists</div>";
 			}
 		}
 			
-		return $success;
+		return array('success'=>$success, 'messages'=>$messages);
 	}
 
 	/**
@@ -176,6 +185,18 @@ class Article {
 		
 		list($id, $rows_affected) = $this->db->Execute($sql);
 		return $rows_affected;
+	}
+	
+	/**
+	 * Massage Summary by removing non-ascii characters and add meta tags where appropriate
+	 * @param string $summary
+	 * @return string
+	 */
+	function processSummary($summary){
+		$summary = preg_replace('/[^(\x20-\x7F)]*/','', $summary); // Strip out non-ascii characters
+		$summary = "<description>{$summary}</description>";	// Facebook uses this tag for sharing
+		$summary = $this->db->escape_string($summary);	// Prevent SQL Injection
+		return $summary;
 	}
 }
 ?>
