@@ -1,5 +1,6 @@
 <?php
 require_once('data_source.php');
+require_once('imgur.php');
 
 class Article {
 	var $dataloaded = false;
@@ -29,7 +30,7 @@ class Article {
 				$this->title = $this->db->escape_string($data['title']);
 				$this->url = $data['url'];
 				$this->summary = $this->processSummary($data['summary']);
-				$this->image_url = $data['image_url'];
+				$this->image_url = $this->reHostImage($data['image_url']);
 					
 				$tags = str_replace(array('#', ' ', ', '), array('', ',', ','), $data['tags']);
 				$tags = str_replace(',,', ',', $tags);
@@ -197,6 +198,17 @@ class Article {
 		$summary = "<description>{$summary}</description>";	// Facebook uses this tag for sharing
 		$summary = $this->db->escape_string($summary);	// Prevent SQL Injection
 		return $summary;
+	}
+	
+	function reHostImage($image_url){
+		$imgur = new Imgur();
+		$new_image_url = $imgur->reHostImage($image_url);
+		
+		if(empty($new_image_url)){
+			$new_image_url = $image_url;
+		}
+		
+		return $new_image_url;
 	}
 }
 ?>
